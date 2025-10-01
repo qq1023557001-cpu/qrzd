@@ -12,9 +12,11 @@ android {
         targetSdk 36
         versionCode 1
         versionName "1.0"
-
+        ndk { abiFilters "armeabi-v7a", "arm64-v8a", "x86", "x86_64" } // 适配模拟器
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
+
+    buildFeatures { viewBinding true } // 便于调试 UI
 
     buildTypes {
         release {
@@ -30,9 +32,30 @@ android {
 
 dependencies {
 
+    // ---- 基础 AndroidX ----
+    implementation libs.core
     implementation libs.appcompat
     implementation libs.material
     testImplementation libs.junit
     androidTestImplementation libs.ext.junit
     androidTestImplementation libs.espresso.core
+
+    // ---- ML Kit 文本识别（Bundled，本地模型，适合无 GMS 的模拟器） ----
+    implementation libs.text.recognition             // 拉丁
+    implementation libs.text.recognition.chinese     // 中文
+    implementation libs.text.recognition.japanese    // 日文
+    implementation libs.text.recognition.korean      // 韩文
+    // 以上坐标、版本及 Java 用法见官方文档。:contentReference[oaicite:2]{index=2}
+
+    // ---- OpenCV（官方 AAR，Maven Central）用于模板匹配、预处理 ----
+    implementation libs.opencv  // 官方维护，从 4.9.0 起提供 AAR。:contentReference[oaicite:3]{index=3}
+
+    // ---- 配置读取（任选其一：Jackson YAML 或 SnakeYAML） ----
+    implementation libs.jackson.databind
+    implementation libs.jackson.dataformat.yaml  // YAML 支持 :contentReference[oaicite:4]{index=4}
+
+
+    // ---- 日志（可选）----
+    implementation libs.timber
+
 }
