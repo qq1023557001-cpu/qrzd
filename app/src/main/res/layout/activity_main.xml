@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent" android:layout_height="match_parent">
+
+    <LinearLayout
+        android:layout_width="match_parent" android:layout_height="wrap_content"
+        android:orientation="vertical" android:padding="16dp">
+
+        <Button
+            android:id="@+id/btn_acc" android:layout_width="match_parent"
+            android:layout_height="wrap_content" android:text="打开无障碍设置" />
+
+        <View android:layout_width="match_parent" android:layout_height="12dp" />
+
+        <EditText
+            android:id="@+id/et_fps"
+            android:inputType="number"
+            android:hint="FPS（默认 12）"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <EditText
+            android:id="@+id/et_thresh"
+            android:inputType="numberDecimal"
+            android:hint="模板阈值（默认 0.84）"
+            android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <TextView
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="ROI 百分比（x,y,w,h）" android:textStyle="bold" />
+
+        <EditText android:id="@+id/et_roi_x" android:inputType="numberDecimal"
+            android:hint="x（0.70）" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/et_roi_y" android:inputType="numberDecimal"
+            android:hint="y（0.75）" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/et_roi_w" android:inputType="numberDecimal"
+            android:hint="w（0.28）" android:layout_width="match_parent" android:layout_height="wrap_content" />
+        <EditText android:id="@+id/et_roi_h" android:inputType="numberDecimal"
+            android:hint="h（0.22）" android:layout_width="match_parent" android:layout_height="wrap_content" />
+
+        <CheckBox
+            android:id="@+id/cb_verbose"
+            android:layout_width="wrap_content" android:layout_height="wrap_content"
+            android:text="Verbose 日志" />
+
+        <View android:layout_width="match_parent" android:layout_height="12dp" />
+
+        <LinearLayout
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:orientation="horizontal">
+
+            <Button
+                android:id="@+id/btn_save"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="保存参数" />
+
+            <View android:layout_width="12dp" android:layout_height="match_parent" />
+
+            <Button
+                android:id="@+id/btn_start"
+                android:layout_width="0dp" android:layout_height="wrap_content"
+                android:layout_weight="1" android:text="启动采集" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/btn_stop"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="停止采集" />
+    </LinearLayout>
+</ScrollView>
