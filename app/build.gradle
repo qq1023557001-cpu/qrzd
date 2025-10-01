@@ -50,7 +50,7 @@ dependencies {
     // ---- OpenCV（官方 AAR，Maven Central）用于模板匹配、预处理 ----
     implementation libs.opencv  // 官方维护，从 4.9.0 起提供 AAR。:contentReference[oaicite:3]{index=3}
 
-    // ---- 配置读取（任选其一：Jackson YAML 或 SnakeYAML） ----
+    // ---- 配置读取
     implementation libs.jackson.databind
     implementation libs.jackson.dataformat.yaml  // YAML 支持 :contentReference[oaicite:4]{index=4}
 

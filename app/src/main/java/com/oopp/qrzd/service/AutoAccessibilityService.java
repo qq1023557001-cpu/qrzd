@@ -1,26 +1,22 @@
 package com.oopp.qrzd.service;
 
 import android.accessibilityservice.AccessibilityService;
-import android.app.Service;
-import android.content.Intent;
+import android.accessibilityservice.GestureDescription;
+import android.graphics.Path;
 import android.graphics.PixelFormat;
-import android.os.IBinder;
 import android.view.Gravity;
-import android.view.LayoutInflater;
 import android.view.View;
 import android.view.WindowManager;
-
-import androidx.annotation.Nullable;
+import android.widget.ImageView;
 
 import com.oopp.qrzd.service.component.DragMoveListener;
-import com.oopp.qrzd.service.component.Gesture;
 
 /**
  * 无障碍服务：派发点击/滑动/长按/曲线拖拽
  */
 public class AutoAccessibilityService extends AccessibilityService {
     private WindowManager wm;
-    private View overlayView;
+    private View overlay;
     private WindowManager.LayoutParams lp;
 
     @Override public void onServiceConnected() {
@@ -29,37 +25,37 @@ public class AutoAccessibilityService extends AccessibilityService {
     }
 
     private void createOverlay() {
-        if (overlayView != null) return;
-        overlayView = LayoutInflater.from(this).inflate(R.layout.overlay_bubble, null);
+        if (overlay != null) return;
+        ImageView bubble = new ImageView(this);
+        bubble.setImageResource(android.R.drawable.presence_online); // TODO: 换成你的悬浮图
+        overlay = bubble;
 
-        int type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY;
         lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
-                type,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY, // 首选
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
                         | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN
                         | WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS,
                 PixelFormat.TRANSLUCENT);
         lp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
-        lp.x = 0; lp.y = 0;
 
-        // 拖动小球
-        overlayView.setOnTouchListener(new DragMoveListener(wm, lp));
-
-        // 点击触发一次“开始/领取”等动作（示例）
-        overlayView.findViewById(R.id.btnGo).setOnClickListener(v -> {
-            Gesture.execTap(this, /*x*/ lastTargetX, /*y*/ lastTargetY);
-        });
-
-        wm.addView(overlayView, lp);
+        overlay.setOnTouchListener(new DragMoveListener(wm, lp));
+        overlay.setOnClickListener(v -> tap(screenCenterX(), screenCenterY())); // 示例：点屏幕中点
+        wm.addView(overlay, lp);
     }
 
-    @Override
-    public void onUnbind(Intent intent) {
-        if (overlayView != null) { wm.removeView(overlayView); overlayView = null; }
-        super.onUnbind(intent);
+    private int screenCenterX(){ return getResources().getDisplayMetrics().widthPixels/2; }
+    private int screenCenterY(){ return getResources().getDisplayMetrics().heightPixels/2; }
+
+    public void tap(int x, int y) {
+        Path p = new Path(); p.moveTo(x, y);
+        GestureDescription.StrokeDescription s = new GestureDescription.StrokeDescription(p, 0, 60);
+        dispatchGesture(new GestureDescription.Builder().addStroke(s).build(), null, null);
     }
 
-
+    @Override public void onDestroy() {
+        if (overlay != null) { wm.removeView(overlay); overlay = null; }
+        super.onDestroy();
+    }
 }
