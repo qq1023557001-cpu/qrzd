@@ -16,6 +16,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.Qrzd" >
+        <activity
+            android:name="com.oopp.qrzd.app.MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+
         <!-- 无障碍服务：支持派发手势 -->
         <service
             android:name="com.oopp.qrzd.service.AutoAccessibilityService"

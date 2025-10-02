@@ -2,6 +2,7 @@ package com.oopp.qrzd.service;
 
 import android.accessibilityservice.AccessibilityService;
 import android.accessibilityservice.GestureDescription;
+import android.content.Intent;
 import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.os.Build;
@@ -12,7 +13,9 @@ import android.view.View;
 import android.view.WindowManager;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.ImageView;
+import android.widget.Toast;
 
+import com.oopp.qrzd.app.MainActivity;
 import com.oopp.qrzd.service.component.DragMoveListener;
 
 /**
@@ -23,30 +26,22 @@ public class AutoAccessibilityService extends AccessibilityService {
     private WindowManager wm;
     private View overlay;
     private WindowManager.LayoutParams lp;
+    private boolean running = false; // 示例：单击切换开/停
 
-    // ====== 必须方法 #1：接收无障碍事件（此处最小实现，先不做逻辑） ======
     @Override
-    public void onAccessibilityEvent(AccessibilityEvent event) {
-        // 可选：监听窗口切换、前台应用变化等
-        // int type = event.getEventType();
-        // CharSequence pkg = event.getPackageName();
-    }
+    public void onAccessibilityEvent(AccessibilityEvent event) { /* 可暂不处理 */ }
 
-    // ====== 必须方法 #2：被系统打断（如来电、切后台）时回调 ======
     @Override
-    public void onInterrupt() {
-        // 可在此暂停你的自动化流程
-    }
+    public void onInterrupt() { /* 可在此暂停自动化 */ }
 
-    // ====== 服务连接成功：初始化悬浮窗 ======
     @Override
     protected void onServiceConnected() {
         super.onServiceConnected();
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         createOverlay();
+        toast("AutoAccessibilityService connected");
     }
 
-    // ====== 可选：解绑/销毁时清理悬浮窗 ======
     @Override
     public boolean onUnbind(android.content.Intent intent) {
         removeOverlay();
@@ -59,48 +54,18 @@ public class AutoAccessibilityService extends AccessibilityService {
         super.onDestroy();
     }
 
-    // ====== 创建悬浮窗（优先 TYPE_ACCESSIBILITY_OVERLAY） ======
     private void createOverlay() {
         if (overlay != null || wm == null) return;
 
+        // 1) 先准备 View
         ImageView bubble = new ImageView(this);
-        // 先用系统图标占位，后续换成你的资源
         bubble.setImageResource(android.R.drawable.presence_online);
-
-        // 设置一个合适的尺寸（例如 56dp）
         int size = dp(56);
         bubble.setLayoutParams(new WindowManager.LayoutParams(size, size));
-
-        // 简易拖动
-        bubble.setOnTouchListener(new View.OnTouchListener() {
-            int startX, startY; float touchX, touchY;
-            @Override public boolean onTouch(View v, MotionEvent e) {
-                if (lp == null) return false;
-                switch (e.getAction()) {
-                    case MotionEvent.ACTION_DOWN:
-                        startX = lp.x; startY = lp.y;
-                        touchX = e.getRawX(); touchY = e.getRawY();
-                        return true;
-                    case MotionEvent.ACTION_MOVE:
-                        lp.x = startX + Math.round(e.getRawX() - touchX);
-                        lp.y = startY + Math.round(e.getRawY() - touchY);
-                        wm.updateViewLayout(overlay, lp);
-                        return true;
-                }
-                return false;
-            }
-        });
-
-        // 点击示例：点屏幕中点；之后你可换成“点击识别到的坐标”
-        bubble.setOnClickListener(v -> {
-            int x = getScreenWidth() / 2;
-            int y = getScreenHeight() / 2;
-            tap(x, y);
-        });
-
         overlay = bubble;
 
-        int type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY; // API 28 可用
+        // 2) **先创建 lp**（注意：必须在绑定 DragMoveListener 之前）
+        int type = WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY; // API 28 OK
         lp = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.WRAP_CONTENT,
@@ -112,7 +77,36 @@ public class AutoAccessibilityService extends AccessibilityService {
         lp.gravity = Gravity.START | Gravity.CENTER_VERTICAL;
         lp.x = 0; lp.y = 0;
 
+        // 3) 绑定你实现的 DragMoveListener（可拖动 & 点击不丢失）
+        // 确保可点可长按
+        overlay.setClickable(true);
+        overlay.setLongClickable(true);
+        overlay.setOnTouchListener(new DragMoveListener(
+                this, wm, lp,
+                new DragMoveListener.Callback() {
+                    @Override public void onClick(View v) {
+                        running = !running;
+                        toast(running ? "▶ 已开始" : "⏸ 已暂停");
+
+                        // 演示：点屏幕中心，并带可视化“闪点”
+                        int cx = getResources().getDisplayMetrics().widthPixels / 2;
+                        int cy = getResources().getDisplayMetrics().heightPixels / 2;
+                        tapWithFeedback(cx, cy);
+                    }
+
+                    @Override public void onLongPress(View v) {
+                        // 从 Service 拉起 Activity 必须加 NEW_TASK
+                        android.content.Intent i =
+                                new android.content.Intent(getApplicationContext(), MainActivity.class);
+                        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                        startActivity(i);
+                    }
+                }
+        ));
+
+        // 4) addView 到窗口
         wm.addView(overlay, lp);
+        toast("overlay added");
     }
 
     private void removeOverlay() {
@@ -122,24 +116,58 @@ public class AutoAccessibilityService extends AccessibilityService {
         }
     }
 
-    // ====== 手势封装：点击 ======
-    public void tap(int x, int y) {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.N) return; // API 24+
-        Path p = new Path();
-        p.moveTo(x, y);
-        GestureDescription.StrokeDescription stroke =
-                new GestureDescription.StrokeDescription(p, 0, 60);
-        dispatchGesture(new GestureDescription.Builder().addStroke(stroke).build(),
-                null, null);
+    // ===== 手势：点击（带回调 + 可视化“闪点”）=====
+    private void tapWithFeedback(int x, int y) {
+        Path p = new Path(); p.moveTo(x, y);
+        GestureDescription g = new GestureDescription.Builder()
+                .addStroke(new GestureDescription.StrokeDescription(p, 0, 60))
+                .build();
+
+        flashDot(x, y);
+
+        dispatchGesture(g, new GestureResultCallback() {
+            @Override public void onCompleted(GestureDescription gestureDescription) {
+                toast("tap OK @(" + x + "," + y + ")");
+            }
+            @Override public void onCancelled(GestureDescription gestureDescription) {
+                toast("tap CANCELLED");
+            }
+        }, null);
     }
 
-    // 你也可以加 swipe/dragPath 等封装
+    // 在点击位置显示 300ms 的小点，方便你“看见”注入位置
+    private void flashDot(int x, int y) {
+        View dot = new View(this);
+        dot.setBackgroundColor(0xFFFF4081); // 粉色
+        int d = dp(16);
+        WindowManager.LayoutParams dlp = new WindowManager.LayoutParams(
+                d, d,
+                WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
+                WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE
+                        | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE
+                        | WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN,
+                PixelFormat.TRANSLUCENT);
+        dlp.gravity = Gravity.START | Gravity.TOP;
+        dlp.x = x - d / 2;
+        dlp.y = y - d / 2;
 
-    // ====== 工具方法 ======
+        wm.addView(dot, dlp);
+        dot.postDelayed(() -> {
+            try { wm.removeView(dot); } catch (Throwable ignore) {}
+        }, 300);
+    }
+
+    // ===== 工具 =====
     private int dp(int dp) {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         return Math.round(dp * dm.density);
     }
-    private int getScreenWidth() { return getResources().getDisplayMetrics().widthPixels; }
-    private int getScreenHeight() { return getResources().getDisplayMetrics().heightPixels; }
+    private void toast(String s) {
+        try {
+            Toast.makeText(getApplicationContext(), s, Toast.LENGTH_SHORT).show();
+        }catch (Exception e){
+            e.printStackTrace();
+        }
+
+    }
 }
