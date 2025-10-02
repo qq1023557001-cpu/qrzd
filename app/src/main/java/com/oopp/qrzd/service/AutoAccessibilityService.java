@@ -163,11 +163,6 @@ public class AutoAccessibilityService extends AccessibilityService {
         return Math.round(dp * dm.density);
     }
     private void toast(String s) {
-        try {
-            Toast.makeText(getApplicationContext(), s, Toast.LENGTH_SHORT).show();
-        }catch (Exception e){
-            e.printStackTrace();
-        }
-
+        Toast.makeText(getApplicationContext(), s, Toast.LENGTH_SHORT).show();
     }
 }
