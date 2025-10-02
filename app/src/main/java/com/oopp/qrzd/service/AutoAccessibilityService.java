@@ -7,6 +7,7 @@ import android.graphics.Path;
 import android.graphics.PixelFormat;
 import android.os.Build;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.view.Gravity;
 import android.view.MotionEvent;
 import android.view.View;
@@ -15,8 +16,13 @@ import android.view.accessibility.AccessibilityEvent;
 import android.widget.ImageView;
 import android.widget.Toast;
 
+import androidx.core.content.ContextCompat;
+
 import com.oopp.qrzd.app.MainActivity;
+import com.oopp.qrzd.constants.Constants;
 import com.oopp.qrzd.service.component.DragMoveListener;
+
+import timber.log.Timber;
 
 /**
  * 无障碍服务：派发点击/滑动/长按/曲线拖拽
@@ -39,7 +45,7 @@ public class AutoAccessibilityService extends AccessibilityService {
         super.onServiceConnected();
         wm = (WindowManager) getSystemService(WINDOW_SERVICE);
         createOverlay();
-        toast("AutoAccessibilityService connected");
+        Timber.i("AutoAccessibilityService connected");
     }
 
     @Override
@@ -81,24 +87,25 @@ public class AutoAccessibilityService extends AccessibilityService {
         // 确保可点可长按
         overlay.setClickable(true);
         overlay.setLongClickable(true);
+
+        // 3) 使用你的 DragMoveListener（点击=切换 OCR，长按=打开设置页）
         overlay.setOnTouchListener(new DragMoveListener(
-                this, wm, lp,
+                getApplicationContext(), wm, lp,
                 new DragMoveListener.Callback() {
                     @Override public void onClick(View v) {
                         running = !running;
-                        toast(running ? "▶ 已开始" : "⏸ 已暂停");
+                        // 同步给 CaptureService（更新前台通知为 OCR ON/OFF）
+                        updateOcrToggle(running);
 
-                        // 演示：点屏幕中心，并带可视化“闪点”
+                        // 可视化一下：点屏幕中心
                         int cx = getResources().getDisplayMetrics().widthPixels / 2;
                         int cy = getResources().getDisplayMetrics().heightPixels / 2;
                         tapWithFeedback(cx, cy);
                     }
 
                     @Override public void onLongPress(View v) {
-                        // 从 Service 拉起 Activity 必须加 NEW_TASK
-                        android.content.Intent i =
-                                new android.content.Intent(getApplicationContext(), MainActivity.class);
-                        i.addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK);
+                        Intent i = new Intent(getApplicationContext(), com.oopp.qrzd.app.MainActivity.class);
+                        i.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                         startActivity(i);
                     }
                 }
@@ -106,7 +113,15 @@ public class AutoAccessibilityService extends AccessibilityService {
 
         // 4) addView 到窗口
         wm.addView(overlay, lp);
-        toast("overlay added");
+        Timber.i("overlay added");
+    }
+
+    private void updateOcrToggle(boolean enabled) {
+        Intent i = new Intent(getApplicationContext(), CaptureService.class);
+        i.setAction(Constants.ACT_SET_OCR_ENABLED);
+        i.putExtra(Constants.EXTRA_ENABLED, enabled);
+        ContextCompat.startForegroundService(getApplicationContext(), i);
+        Timber.i(enabled ? "OCR ON" : "OCR OFF");
     }
 
     private void removeOverlay() {
@@ -127,10 +142,10 @@ public class AutoAccessibilityService extends AccessibilityService {
 
         dispatchGesture(g, new GestureResultCallback() {
             @Override public void onCompleted(GestureDescription gestureDescription) {
-                toast("tap OK @(" + x + "," + y + ")");
+                Timber.i("tap OK @(" + x + "," + y + ")");
             }
             @Override public void onCancelled(GestureDescription gestureDescription) {
-                toast("tap CANCELLED");
+                Timber.i("tap CANCELLED");
             }
         }, null);
     }
@@ -161,8 +176,5 @@ public class AutoAccessibilityService extends AccessibilityService {
     private int dp(int dp) {
         DisplayMetrics dm = getResources().getDisplayMetrics();
         return Math.round(dp * dm.density);
-    }
-    private void toast(String s) {
-        Toast.makeText(getApplicationContext(), s, Toast.LENGTH_SHORT).show();
     }
 }

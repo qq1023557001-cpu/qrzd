@@ -8,4 +8,7 @@ public final class Constants {
     public static final String EXTRA_TEXT_SNIPPET  = "text";
     public static final String EXTRA_COUNT         = "count";
     public static final String EXTRA_LATENCY_MS    = "lat";
+    public static final String ACT_START_CAPTURE = "com.oopp.qrzd.action.START_CAPTURE";
+    public static final String ACT_STOP_CAPTURE  = "com.oopp.qrzd.action.STOP_CAPTURE";
+
 }

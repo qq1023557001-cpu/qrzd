@@ -117,6 +117,15 @@ public class MainActivity extends AppCompatActivity {
                 Toast.makeText(this, "用户取消了录屏授权", Toast.LENGTH_SHORT).show();
             }
         }
+
+        if (requestCode == REQ_CAPTURE && resultCode == Activity.RESULT_OK && data != null) {
+            Intent svc = new Intent(this, com.oopp.qrzd.service.CaptureService.class)
+                    .setAction(com.oopp.qrzd.constants.Constants.ACT_START_CAPTURE)
+                    .putExtra("resultCode", resultCode)
+                    .putExtra("data", data);
+            androidx.core.content.ContextCompat.startForegroundService(this, svc);
+        }
+
     }
 
     // 打开系统无障碍设置
